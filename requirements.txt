@@ -1,0 +1,14 @@
+pandas
+transformers
+peft
+torch
+bitsandbytes
+datasets
+accelerate
+loralib
+sentencepiece
+accelerate
+python-liquid
+vllm
+Levenshtein
+autoawq
