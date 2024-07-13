@@ -17,7 +17,7 @@ w/o shuffle
 |[Swallow-70B](https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf) | 32.3 | ja |
 |[Swallow-70B](https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf) | - | en |
 |[Meditron-70B(Llama2-based)](https://huggingface.co/epfl-llm/meditron-70b) | 29.9 | en |
-|[Med42-70B(Llama2-based](https://huggingface.co/m42-health/med42-70b) | 45.0 | en |
+|[Med42-70B](https://huggingface.co/m42-health/med42-70b) | 45.0 | en |
 |[Llama2-70B](https://huggingface.co/meta-llama/Llama-2-70b-chat-hf)| 26.0 | en |
 |[Llama3-70B](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct)| 38.3 | en |
 |[Llama3-70B](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct)| 43.1 | ja |
@@ -29,7 +29,13 @@ w/o shuffle
 |[Llama3-8B](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)| 22.1 | ja |
 |[Youko-8B](https://huggingface.co/rinna/llama-3-youko-8b)| 22.5 | en |
 |[Youko-8B](https://huggingface.co/rinna/llama-3-youko-8b)| 24.2 | ja |
+|[Qwen2-7B](https://huggingface.co/Qwen/Qwen2-7B-Instruct)| 45.9 | en |
 |[Qwen2-7B](https://huggingface.co/Qwen/Qwen2-7B-Instruct)| 41.7 | ja |
+|[JMedLLM-v1-7B(ja)]()| 52.5 | ja |
+|[JMedLLM-v1-7B(ja)]()| 50.2 | en |
+|[JMedLLM-v1-7B(en)]()| 44.2 | ja |
+|[JMedLLM-v1-7B(en)]()| 46.2 | en |
+
 
 
 
