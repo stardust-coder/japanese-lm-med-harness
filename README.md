@@ -1,4 +1,4 @@
-# Japanese・English Medical Language Model Evaluation Harness
+# Japanese & English Medical Language Model Evaluation Harness
 
 Evaluations for medical LLMs in one line.   
 ワンコマンドで実行可能な医療分野に特化したLLMの評価プログラム.
@@ -7,7 +7,7 @@ Evaluations for medical LLMs in one line.
 
 ## Leaderboard
 
-w/o shuffle  
+without shuffle of choices
 | Model |[IgakuQA](https://github.com/jungokasai/IgakuQA) | lang |
 |---|---|---|
 |[MedSwallow-70B](https://huggingface.co/AIgroup-CVM-utokyohospital/MedSwallow-70b) | 46.1 | en |
@@ -23,6 +23,7 @@ w/o shuffle
 |[Llama3-70B](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct)| 43.1 | ja |
 |[Llama3-70B w/o quantize](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct)| 37.6 | en |
 |[Llama3-70B w/o quantize](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct)|  35.5 | ja |
+|[OpenBioLLM-8B](https://huggingface.co/aaditya/Llama3-OpenBioLLM-8B)| 39.6 | en |
 |[OpenBioLLM-8B](https://huggingface.co/aaditya/Llama3-OpenBioLLM-8B)| 30.9 | ja |
 |[Swallow-7B](tokyotech-llm/Swallow-7b-instruct-hf) | 18.6 | ja |
 |[Llama3-8B](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)| 29.0 | en |
@@ -37,10 +38,7 @@ w/o shuffle
 |[JMedLLM-v1-7B(en)]()| 46.2 | en |
 
 
-
-
-
-with shuffle  
+with shuffle of choices
 | Model |[IgakuQA](https://github.com/jungokasai/IgakuQA) | lang |
 |---|---|---|
 |[MedSwallow-70B](https://huggingface.co/AIgroup-CVM-utokyohospital/MedSwallow-70b) | 45.5 | ja |
@@ -71,20 +69,28 @@ with shuffle
 
 ## Setup
 ```
-pip install -r requirements.txt
+nvidia-smi #check GPU availability
+git clone https://github.com/stardust-coder/japanese-lm-med-harness
+cd japanese-lm-med-harness
+pip install -r requirements.txt #use virtual environment if needed
 cd dataset
-git clone https://github.com/jungokasai/IgakuQA.git
+git clone https://github.com/jungokasai/IgakuQA.git # prepare datasets you want to use (※)
+
+...
+
 cd ..
 ```
 
-Set each dataset as follows
+(※) Set each dataset from previous studies as follows.
 ```
 dataset/
 - IgakuQA/
     - baseline_results
     - data
         - 2018
-        ...
+        - 2019
+        - 2020
+        - 2021
         - 2022
 - MedQA
     - usmleqa_en.jsonl
@@ -92,8 +98,12 @@ dataset/
 - MedMCQA
     - medmcqa_en.jsonl
     - medmcqa_ja.jsonl
-- JMMLU
-    - xxx.csv
+- JMMLU #jsonl will be automatically generated during inference
+    - anatomy.csv
+    - clinical_knowledge.csv
+    - college_medicine.csv
+    - medical_genetics.csv
+    - professional_medicine.csv
 - ClinicalQA25
     - clinicalqa_en.jsonl
     - clinicalqa_ja.jsonl
@@ -102,7 +112,9 @@ dataset/
 
 ## Usage
 
-Ex 1.
+Results will be saved in jsonl format at `result/`.
+
+Ex 1. (load model_path first and then load peft model)
 ```
 python eval_bench.py \
 --model_path tokyotech-llm/Swallow-70b-instruct-hf \
@@ -152,17 +164,11 @@ python eval_bench.py \
 --lang ja
 ```
 
-### Recommended models
-- epfl-llm/meditron-7b
-- BioMistral/BioMistral-7B
-- FreedomIntelligence/Apollo-7B (not supported yet)
-- tokyotech-llm/Swallow-7b-instruct-hf
-
 
 ### parameters
 model_path : huggingface model id
 lang : "ja" or "en"  
-prompt : see [template.py](./template.py) for options. 
+prompt : see [template.py](./template.py) for options. Add manually if you need your own prompt template.
 use_vllm : True or False
 num_gpus : specify when using vllm, defaults to 1.
 quantize : True or False. Better to quantize when using 70B LLM.   
@@ -182,20 +188,17 @@ data :
 - [IgakuQA]() : Japanese National Medical License Exam. 
 - [MedMCQA]() : Multi-Subject Multi-Choice Dataset for Medical domain, we only use evaluation split.
 - [MedQA]() : Americal National Medical License Exam, we only use evaluation split.
+- [JMMLU]() : Japanese Massive Multitask Language Understanding Benchmark
+- [CardioExam]() : Sample questions extracted from [the Japanese Circulation Society](https://www.j-circ.or.jp/specialist/sen_training/).
 
-
-### For Open-ended text generation
-- exact match
-- gestalt distance
-
-### For Multiple-choices question-answering
+### Default Metric for Multiple-choices question-answering
 When the choices are  
 a.) hoge  
 b.) fuga  
 ...,    
 the response of the LLM is meant to be "fuga" rather than "b". This can be controlled via prompting to a certain extent.
 - accuracy based on exact match
-- accuracy based on gestalt match
+- accuracy based on gestalt match (default, see [Sukeda et al.](https://arxiv.org/abs/2310.10083))
 
 
 ### Notes
@@ -322,6 +325,8 @@ yarl==1.9.4
 
 
 ### Acknowledgement / 謝辞
+
+We thank all the data providers used in our work.  
 This work was supported by AIST KAKUSEI project (FY2023).  
 本研究は、国立研究開発法人産業技術総合研究所事業の令和5年度覚醒プロジェクトの助成を受けたものです。 
 

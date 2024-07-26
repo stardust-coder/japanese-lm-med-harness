@@ -100,7 +100,7 @@ def inference(args):
         return response
 
     def prepare_data(data_name, ln):
-        assert data_name in ["IgakuQA","IgakuQA2018","MedMCQA","MedQA","sample"]
+        assert data_name in ["IgakuQA","IgakuQA2018","MedMCQA","MedQA","CardioExam","ClinicalQA25","sample","JMMLU","JMMLU-anatomy","JMMLU-clinical_knowledge","JMMLU-college_medicine","JMMLU-medical_genetics","JMMLU-professional_medicine"]
         if "IgakuQA" in data_name:
             flag_ = False if data_name=="IgakuQA-v" else True
             if "20" in data_name:
@@ -130,17 +130,75 @@ def inference(args):
                         if j2["text_only"] == flag_ and len(j2["choices"]) == 5:
                             jsonl_data.append(j1)
             return jsonl_data
+        
+        elif data_name == "ClinicalQA25":
+            jsonl_data = []
+            with open(f"dataset/ClinicalQA25/clinicalqa25_{ln}.jsonl") as f:
+                tmp_ = f.readlines()
+                for l in tmp_:
+                    j = json.loads(l)
+                    j['problem_text'] = j['question']
+                    j["choices"] = ["","","","",""]
+                    del j['question']
+                    jsonl_data.append(j)
+            return jsonl_data
 
         else:
+            if "JMMLU" in data_name:
+                import os
+                if not os.path.exists(f"dataset/JMMLU/{topic}.jsonl"):#only first inference to generate jsonl:
+                    topic = data_name.replace("JMMLU-","")
+                    df_ = pd.read_csv(f"dataset/JMMLU/{topic}.csv", header=None, names=['problem_text', 'choice1','choice2','choice3','choice4','correct_choice'])
+                    choices = []
+                    answers = []
+                    for i,v in df_.iterrows():
+                        choice = [v["choice1"],v["choice2"],v["choice3"],v["choice4"]]
+                        letter_to_ind = {"A":0,"B":1,"C":2,"D":3}
+                        answer = choice[letter_to_ind[v["correct_choice"]]]
+                        choices.append(choice)
+                        answers.append(answer) 
+                    df_["choice"] = choices
+                    df_["answer"] = answers
+                    df_.to_json(f"dataset/JMMLU/{topic}.jsonl", orient='records', force_ascii=False, lines=True)
+            
+            elif "MMLU" in data_name:
+                import os
+                if not os.path.exists(f"dataset/MMLU/{topic}.jsonl"):#only first inference to generate jsonl:
+                    topic = data_name.replace("MMLU-","")
+                    df_ = pd.read_csv(f"dataset/MMLU/{topic}_test.csv", header=None, names=['problem_text', 'choice1','choice2','choice3','choice4','correct_choice'])
+                    choices = []
+                    answers = []
+                    for i,v in df_.iterrows():
+                        choice = [v["choice1"],v["choice2"],v["choice3"],v["choice4"]]
+                        letter_to_ind = {"A":0,"B":1,"C":2,"D":3}
+                        answer = choice[letter_to_ind[v["correct_choice"]]]
+                        choices.append(choice)
+                        answers.append(answer) 
+                    df_["choice"] = choices
+                    df_["answer"] = answers
+                    df_.to_json(f"dataset/MMLU/{topic}.jsonl", orient='records', force_ascii=False, lines=True)
+            else:
+                pass
+
             if data_name == "sample":
                 files = glob.glob("dataset/IgakuQA/data/2018/112-A.jsonl")
             elif data_name == "MedMCQA":
                 files = glob.glob(f"dataset/MedMCQA/medmcqa_{ln}.jsonl")
             elif data_name == "MedQA":
                 files = glob.glob(f"dataset/MedQA/usmleqa_{ln}.jsonl")
+            elif data_name == "CardioExam":
+                files = glob.glob(f"dataset/CardioExam/cardioexam_{ln}.jsonl")
+            elif data_name == "JMMLU":
+                assert ln == "ja"
+                files = glob.glob(f"dataset/JMMLU/*.jsonl")
+            elif "JMMLU" in data_name:
+                assert ln == "ja"
+                category = data_name.replace("JMMLU-","")
+                files = glob.glob(f"dataset/JMMLU/{category}.jsonl")
 
             files.sort()
             jsonl_data = []
+           
             for file in files:
                 with open(file) as f:
                     tmp_ = f.readlines()
@@ -155,16 +213,23 @@ def inference(args):
     assert len(test_data) != 0
 
     result = []
+    id_ = 0
     for item in tqdm(test_data):
-        print(item["problem_id"])
-        problem_id = item["problem_id"]
+        try:
+            problem_id = item["problem_id"]
+        except:
+            id_ += 1
+            problem_id = str(id_)
+        print(problem_id)
+        print(item)
         if "Igaku" in args.data:
             question = item["problem_text"] if args.lang == "ja" else item["problem_text_en"]
             choices = item["choices"] if args.lang == "ja" else item["choices_en"]
+            
         else:
             question = item["problem_text"]
             choices = item["choices"]
-        #print(item)
+        
 
         if (len(question) <= 1024 and args.lang=="ja") or (len(question) <= 2048 and args.lang=="en"): #depends on GPU capacity
             if "Igaku" in args.data or args.data=="sample": #IgakuQAはanswerが記号なので, 選択肢に修正.
@@ -186,18 +251,35 @@ def inference(args):
             else:          
                 prompt = prompt_template.render(instruction=question,input=",".join(choices))
             full_response = generate(prompt)
-            if args.lang=="ja":
-                response = full_response.split("### 応答：\n")[-1]
+
+            # ###(old)Zero-shot inference            
+            # if args.lang=="ja":
+            #     response = full_response.split("### 応答：\n")[-1]
+            # else:
+            #     if "Answer" in full_response:
+            #         response = full_response.split("### Answer")[-1]
+            #         response = response.split("###")[0]
+            #     elif "Response" in full_response:
+            #         response = full_response.split("### Response")[-1]
+            #         response = response.split("###")[0]
+            #     else:
+            #         response = full_response.split("### Response")[-1]
+            
+            ###k-shot inference
+            k = 0
+            if "### 応答：\n" in full_response:
+                response = full_response.split("### 応答：\n")[1+k]
+            elif "Answer" in full_response:
+                response = full_response.split("### Answer")[1+k]
+            elif "Response" in full_response:
+                response = full_response.split("### Response")[1+k]
             else:
-                if "Answer" in full_response:
-                    response = full_response.split("### Answer")[-1]
-                    response = response.split("###")[0]
-                elif "Response" in full_response:
-                    response = full_response.split("### Response")[-1]
-                    response = response.split("###")[0]
-                else:
-                    response = full_response.split("### Response")[-1]
+                response = full_response
             response = response.strip()
+            response = response.split("\n")[0]
+            response = response.strip()
+            print(response)
+
             result.append([problem_id,question,choices,answer,full_response,response])
    
     result_df = pd.DataFrame(result, columns=["problem_id","question","choices","answer","full_response","response"])
@@ -207,7 +289,7 @@ def inference(args):
 def evaluate(args):
     model_name, model_id = parse_model_name(args.model_path)    
     is_shuffle = "shuffle" if args.shuffle==True else "noshuffle"
-    with open(f"result/{model_name}-{args.data}-{args.prompt}-{is_shuffle}.jsonl") as f:
+    with open(f"result/{model_name}-{args.data}-{args.prompt}-{is_shuffle}.jsonl",encoding="utf-8") as f:
         result = [json.loads(l) for l in f.readlines()]
     
     new_result = []
@@ -236,7 +318,6 @@ def evaluate(args):
                 new_res["exact_match"] = 0
             
             #Gestalt score
-            
             def gestalt_dist(word1: str, word2: str) -> float:
                 return difflib.SequenceMatcher(None, word1, word2).ratio()
             
@@ -272,7 +353,7 @@ def evaluate(args):
     print("Exact Match:", exact_match_score, "/", len(result), "=", exact_match_score/len(result))
     print("Gestalt Match:", gestalt_match_score, "/", len(result), "=", gestalt_match_score/len(result))
 
-    with open(f"result/{model_name}-{args.data}-{args.prompt}-{is_shuffle}_eval.jsonl", 'w', newline='\n') as g:
+    with open(f"result/{model_name}-{args.data}-{args.prompt}-{is_shuffle}_eval.jsonl", 'w', newline='\n',encoding="utf-8") as g:
         for l in new_result:
             g.writelines(json.dumps(l, ensure_ascii=False))
             g.write("\n")
