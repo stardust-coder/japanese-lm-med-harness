@@ -16,7 +16,7 @@ import os
 import random
 
 # モデルのキャッシュパスの変更
-cache_dir = "/groups/gcf51354/huggingface_my_hub/"
+cache_dir = "/scratch/acf16286pi/huggingface_my_hub"
 os.environ['HF_HOME'] = cache_dir
 #os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
@@ -55,7 +55,7 @@ def inference(args):
     is_shuffle = "shuffle" if args.shuffle==True else "noshuffle"
 
     if args.use_vllm:
-        #use llm
+        #use vllm
         max_model_len = 2048
         llm = LLM(model=model_id,dtype='float16', tensor_parallel_size=args.num_gpu, max_model_len=max_model_len, quantization="AWQ") if args.quantize else LLM(model=model_id,dtype='float16', tensor_parallel_size=args.num_gpu, max_model_len=max_model_len)
         sampling_params = SamplingParams(temperature=1e-2, top_p=1.0, max_tokens=256) #greedy sampling
@@ -73,7 +73,6 @@ def inference(args):
         else:
             tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir,trust_remote_code=True)
             model = AutoModelForCausalLM.from_pretrained(model_id,device_map="auto",cache_dir=cache_dir,trust_remote_code=True)
-            #model = AutoModelForCausalLM.from_pretrained(model_id,device_map="auto",torch_dtype=torch.bfloat16,cache_dir=cache_dir,trust_remote_code=True) #if using PiSSA            
 
         if args.peft:
             peft_name = args.peft
@@ -100,7 +99,7 @@ def inference(args):
         return response
 
     def prepare_data(data_name, ln):
-        assert data_name in ["IgakuQA","IgakuQA2018","MedMCQA","MedQA","CardioExam","ClinicalQA25","sample","JMMLU","JMMLU-anatomy","JMMLU-clinical_knowledge","JMMLU-college_medicine","JMMLU-medical_genetics","JMMLU-professional_medicine"]
+        # assert data_name in ["IgakuQA","IgakuQA2018","MedMCQA","MedQA","CardioExam","ClinicalQA25","sample","MMLU","JMMLU"]
         if "IgakuQA" in data_name:
             flag_ = False if data_name=="IgakuQA-v" else True
             if "20" in data_name:
@@ -144,10 +143,9 @@ def inference(args):
             return jsonl_data
 
         else:
-            if "JMMLU" in data_name:
-                import os
+            if "JMMLU-" in data_name:
+                topic = data_name.replace("JMMLU-","")
                 if not os.path.exists(f"dataset/JMMLU/{topic}.jsonl"):#only first inference to generate jsonl:
-                    topic = data_name.replace("JMMLU-","")
                     df_ = pd.read_csv(f"dataset/JMMLU/{topic}.csv", header=None, names=['problem_text', 'choice1','choice2','choice3','choice4','correct_choice'])
                     choices = []
                     answers = []
@@ -157,14 +155,13 @@ def inference(args):
                         answer = choice[letter_to_ind[v["correct_choice"]]]
                         choices.append(choice)
                         answers.append(answer) 
-                    df_["choice"] = choices
+                    df_["choices"] = choices
                     df_["answer"] = answers
                     df_.to_json(f"dataset/JMMLU/{topic}.jsonl", orient='records', force_ascii=False, lines=True)
             
-            elif "MMLU" in data_name:
-                import os
+            elif "MMLU-" in data_name:
+                topic = data_name.replace("MMLU-","")
                 if not os.path.exists(f"dataset/MMLU/{topic}.jsonl"):#only first inference to generate jsonl:
-                    topic = data_name.replace("MMLU-","")
                     df_ = pd.read_csv(f"dataset/MMLU/{topic}_test.csv", header=None, names=['problem_text', 'choice1','choice2','choice3','choice4','correct_choice'])
                     choices = []
                     answers = []
@@ -174,7 +171,7 @@ def inference(args):
                         answer = choice[letter_to_ind[v["correct_choice"]]]
                         choices.append(choice)
                         answers.append(answer) 
-                    df_["choice"] = choices
+                    df_["choices"] = choices
                     df_["answer"] = answers
                     df_.to_json(f"dataset/MMLU/{topic}.jsonl", orient='records', force_ascii=False, lines=True)
             else:
@@ -195,6 +192,13 @@ def inference(args):
                 assert ln == "ja"
                 category = data_name.replace("JMMLU-","")
                 files = glob.glob(f"dataset/JMMLU/{category}.jsonl")
+            elif data_name == "MMLU":
+                assert ln == "en"
+                files = glob.glob(f"dataset/MMLU/*.jsonl")
+            elif "MMLU" in data_name:
+                assert ln == "en"
+                category = data_name.replace("MMLU-","")
+                files = glob.glob(f"dataset/MMLU/{category}.jsonl")
 
             files.sort()
             jsonl_data = []
@@ -269,10 +273,10 @@ def inference(args):
             k = 0
             if "### 応答：\n" in full_response:
                 response = full_response.split("### 応答：\n")[1+k]
-            elif "Answer" in full_response:
-                response = full_response.split("### Answer")[1+k]
-            elif "Response" in full_response:
-                response = full_response.split("### Response")[1+k]
+            elif "### Answer" in full_response:
+                response = full_response.split("### Answer:")[1+k]
+            elif "### Response" in full_response:
+                response = full_response.split("### Response:")[1+k]
             else:
                 response = full_response
             response = response.strip()
@@ -287,6 +291,13 @@ def inference(args):
 
 
 def evaluate(args):
+    #Gestalt score
+    def gestalt_dist(word1: str, word2: str) -> float:
+        return difflib.SequenceMatcher(None, word1, word2).ratio()
+    
+    def jaro_winkler_dist(word1: str, word2: str) -> float:
+        return Levenshtein.jaro_winkler(word1, word2)
+
     model_name, model_id = parse_model_name(args.model_path)    
     is_shuffle = "shuffle" if args.shuffle==True else "noshuffle"
     with open(f"result/{model_name}-{args.data}-{args.prompt}-{is_shuffle}.jsonl",encoding="utf-8") as f:
@@ -316,13 +327,6 @@ def evaluate(args):
                 exact_match_score += 1
             else:
                 new_res["exact_match"] = 0
-            
-            #Gestalt score
-            def gestalt_dist(word1: str, word2: str) -> float:
-                return difflib.SequenceMatcher(None, word1, word2).ratio()
-            
-            def jaro_winkler_dist(word1: str, word2: str) -> float:
-                return Levenshtein.jaro_winkler(word1, word2)
 
             gestalt_scores = [(gestalt_dist(c,response)+gestalt_dist(response,c))/2 for c in choices]
             new_res["gestalt_score"] = gestalt_scores
@@ -350,7 +354,7 @@ def evaluate(args):
         except:
             print("Error in ", question_id)
     
-    print("Exact Match:", exact_match_score, "/", len(result), "=", exact_match_score/len(result))
+    print("Exact Match ①:", exact_match_score, "/", len(result), "=", exact_match_score/len(result))
     print("Gestalt Match:", gestalt_match_score, "/", len(result), "=", gestalt_match_score/len(result))
 
     with open(f"result/{model_name}-{args.data}-{args.prompt}-{is_shuffle}_eval.jsonl", 'w', newline='\n',encoding="utf-8") as g:
