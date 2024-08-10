@@ -273,9 +273,9 @@ def inference(args):
             k = 0
             if "### 応答：\n" in full_response:
                 response = full_response.split("### 応答：\n")[1+k]
-            elif "### Answer" in full_response:
+            elif "### Answer:" in full_response:
                 response = full_response.split("### Answer:")[1+k]
-            elif "### Response" in full_response:
+            elif "### Response:" in full_response:
                 response = full_response.split("### Response:")[1+k]
             else:
                 response = full_response

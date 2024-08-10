@@ -7,7 +7,6 @@ Evaluations for medical LLMs in one line.
 
 ## Leaderboard
 
-without shuffle of choices
 | Model |[IgakuQA](https://github.com/jungokasai/IgakuQA) | lang |
 |---|---|---|
 |[MedSwallow-70B](https://huggingface.co/AIgroup-CVM-utokyohospital/MedSwallow-70b) | 46.1 | en |
@@ -38,14 +37,6 @@ without shuffle of choices
 |[JMedLLM-v1-7B(en)]()| 46.2 | en |
 
 
-with shuffle of choices
-| Model |[IgakuQA](https://github.com/jungokasai/IgakuQA) | lang |
-|---|---|---|
-|[MedSwallow-70B](https://huggingface.co/AIgroup-CVM-utokyohospital/MedSwallow-70b) | 45.5 | ja |
-|[Meditron-70B](https://huggingface.co/epfl-llm/meditron-70b) | 29.7 | en |
-|[Med42-70B](https://huggingface.co/m42-health/med42-70b) | 45.5 | en |
-
-
 (*) The training data of MedSwallow is the Japanese-translated MedQA data, which also includes test split.
 
 <details>
@@ -55,6 +46,7 @@ with shuffle of choices
 - all zero-shot
 - quantize : True for 70B models, False for 7B models  
 - metric : Accuracy based on Gestalt distance (relatively robust)   
+- shuffle : None
 - use_vllm : off
 - environment : NVIDIA A100  
 </details>
@@ -104,6 +96,12 @@ dataset/
     - college_medicine.csv
     - medical_genetics.csv
     - professional_medicine.csv
+- MMLU #jsonl will be automatically generated during inference
+    - anatomy_test.csv
+    - clinical_knowledge_test.csv
+    - college_medicine_test.csv
+    - medical_genetics_test.csv
+    - professional_medicine_test.csv
 - ClinicalQA25
     - clinicalqa_en.jsonl
     - clinicalqa_ja.jsonl
@@ -185,10 +183,11 @@ data :
 
 ### Evaluation Datasets
 - ClinicalQA25 from [Almanac]() : 25 Open-ended text generation tasks.
-- [IgakuQA]() : Japanese National Medical License Exam. 
+- [IgakuQA](https://github.com/jungokasai/IgakuQA) : Japanese National Medical License Exam. 
 - [MedMCQA]() : Multi-Subject Multi-Choice Dataset for Medical domain, we only use evaluation split.
-- [MedQA]() : Americal National Medical License Exam, we only use evaluation split.
-- [JMMLU]() : Japanese Massive Multitask Language Understanding Benchmark
+- [MedQA](https://github.com/jind11/MedQA) : Americal National Medical License Exam, we only use evaluation split.
+- [JMMLU](https://github.com/nlp-waseda/JMMLU) : Japanese Massive Multitask Language Understanding Benchmark
+- [MMLU](https://github.com/hendrycks/test) : Massive Multitask Language Understanding Benchmark
 - [CardioExam]() : Sample questions extracted from [the Japanese Circulation Society](https://www.j-circ.or.jp/specialist/sen_training/).
 
 ### Default Metric for Multiple-choices question-answering
