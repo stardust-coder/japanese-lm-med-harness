@@ -2,5 +2,4 @@ work/
 dataset/*
 result/
 batch_script.sh
-README_latest.md
 __pycache__/

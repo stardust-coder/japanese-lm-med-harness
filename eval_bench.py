@@ -16,10 +16,9 @@ import os
 import random
 
 # モデルのキャッシュパスの変更
-cache_dir = "/scratch/acf16286pi/huggingface_my_hub"
+cache_dir = "~/.cache" #Change if you want to store cache in different directory
 os.environ['HF_HOME'] = cache_dir
-#os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
-
+os.makedirs("./result", exist_ok=True)
 device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 
 def parse():
