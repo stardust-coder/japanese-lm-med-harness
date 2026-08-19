@@ -1,5 +1,8 @@
-# Japanese Medical Language Model Evaluation Harness
+# Japanese Medical Language Model Evaluation Harness 
+
 ワンコマンドで実行可能な医療分野に特化したLLMの日英能力評価プログラム.
+
+**Accepted to NeurIPS 2024 AIM-FM Workshop.**
 
 ## Leaderboard
 
@@ -314,6 +317,17 @@ MedMCQA and MedQA were provided at [JMedBench](https://huggingface.co/datasets/C
 ### How to cite
 
 Please cite [our paper](https://arxiv.org/pdf/2409.11783) if you use this code!
+
+```
+@inproceedings{
+    sukeda2024development,
+    title={Development and bilingual evaluation of Japanese medical large language model within reasonably low computational resources},
+    author={Issey Sukeda},
+    booktitle={Advancements In Medical Foundation Models: Explainability, Robustness, Security, and Beyond},
+    year={2024},
+    url={https://openreview.net/forum?id=zQtNbljfK6}
+}
+```
 
 ```
 @article{sukeda2024development,
